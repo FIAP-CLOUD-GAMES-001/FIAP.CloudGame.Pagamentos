@@ -1,0 +1,37 @@
+## Build e Dependências ##
+[Bb]in/
+[Oo]bj/
+/packages/
+/TestResults/
+
+## Visual Studio & IDEs ##
+.vs/
+.vscode/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+## JetBrains Rider ##
+.idea/
+*.sln.iml
+
+## Arquivos de Ambiente e Segredos (CRÍTICO) ##
+# Nunca suba arquivos com senhas, chaves de API ou connection strings reais
+appsettings.Development.json
+appsettings.local.json
+.env
+local.settings.json
+secrets.json
+
+## Logs ##
+*.log
+
+## OS Files ##
+.DS_Store
+Thumbs.db
+
+## Publish ##
+# Ignorar a pasta onde o projeto compilado para publicação é gerado
+/publish/
+/PubTmp/
