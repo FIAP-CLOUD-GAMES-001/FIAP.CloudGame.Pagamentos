@@ -1,4 +1,5 @@
 ﻿using FIAP.CloudGames.Pagamentos.Domain.Entities;
+using FIAP.CloudGames.Pagamentos.Domain.Enums;
 using FIAP.CloudGames.Pagamentos.Domain.Interfaces.Repositoiries;
 using FIAP.CloudGames.Pagamentos.Domain.Interfaces.Services;
 using FIAP.CloudGames.Pagamentos.Domain.Requests;
@@ -20,32 +21,27 @@ namespace FIAP.CloudGames.Pagamentos.Service.Services
 
         public async Task<PaymentResponse> ProcessPaymentAsync(PaymentRequest request)
         {
-            var payment = new Payment
-            {
-                PaymentId = Guid.NewGuid().ToString(),
-                OrderId = request.OrderId,
-                OrderAmount = request.OrderAmount,
-                PaymentMethod = request.PaymentMethod,
-                OrderDate = request.OrderDate,
-                ProcessedDate = DateTime.UtcNow,
-                PaymentStatus = "APPROVED"
-            };
+            var payment = new Payment(
+                request.OrderId,
+                request.OrderAmount,
+                ((PaymentMethod)Convert.ToInt32(request.PaymentMethod)),
+                request.OrderDate);
 
-            await _repository.InsertAsync(payment);
+            await _repository.CreateAsync(payment);
 
             // Notify Azure Functions
-            await _httpClient.PostAsJsonAsync("/api/payment-notification", new
-            {
-                payment.OrderId,
-                payment.PaymentId,
-                payment.PaymentStatus
-            });
+            //await _httpClient.PostAsJsonAsync("/api/payment-notification", new
+            //{
+            //    payment.OrderId,
+            //    payment.PaymentMethod,
+            //    payment.PaymentStatus
+            //});
 
             return new PaymentResponse
             {
-                PaymentId = payment.PaymentId,
-                PaymentStatus = payment.PaymentStatus,
-                ProcessedDate = payment.ProcessedDate
+                Id = payment.Id,
+                PaymentStatus = payment.PaymentStatus.ToString(),
+                ProcessedDate = payment.ProcessedDate.GetValueOrDefault()
             };
         }
     }

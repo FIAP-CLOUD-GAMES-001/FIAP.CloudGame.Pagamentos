@@ -36,7 +36,7 @@ namespace FIAP.CloudGames.Pagamentos.Api.Controllers
         public async Task<IActionResult> ProcessPayment([FromBody] PaymentRequest request)
         {
             var response = await _service.ProcessPaymentAsync(request);
-            return Ok(response);
+            return this.ApiOk(response, "Pagamento Recebido com suecsso");
         }
     }
 }
