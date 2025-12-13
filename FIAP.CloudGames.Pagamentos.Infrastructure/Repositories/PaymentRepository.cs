@@ -21,11 +21,18 @@ public class PaymentRepository : IPaymentRepository
         return await _collection.Find(filter).FirstOrDefaultAsync();
     }
 
-    public async Task<IEnumerable<Payment>> GetByOrderIdAsync(string orderId)
+    public async Task<Payment> GetByOrderIdAsync(string orderId)
     {
         var filter = Builders<Payment>.Filter.Eq(x => x.OrderId, orderId);
+        return await _collection.Find(filter).FirstOrDefaultAsync();
+    }
+
+    public async Task<IEnumerable<Payment>> GetPaymentsByDateAsync(DateTime date)
+    {
+        var filter = Builders<Payment>.Filter.Eq(x => x.OrderDate, date);
         return await _collection.Find(filter).ToListAsync();
     }
+
 
     public async Task CreateAsync(Payment payment)
     {
@@ -52,4 +59,5 @@ public class PaymentRepository : IPaymentRepository
         var filter = Builders<Payment>.Filter.Eq(x => x.Id, id);
         return await _collection.Find(filter).AnyAsync();
     }
+
 }
