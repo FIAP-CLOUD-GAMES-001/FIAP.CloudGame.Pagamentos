@@ -41,22 +41,23 @@ namespace FIAP.CloudGames.Pagamentos.Service.Services
                 ((PaymentMethod)Convert.ToInt32(request.PaymentMethod)),
                 request.OrderDate);
 
+            payment.Approve();
             await _repository.CreateAsync(payment);
 
             var functionUrl = $"{_azureFunctionsBaseUrl}/api/webhook/payment";
             await _httpClient.PostAsJsonAsync(functionUrl, new
             {
                 payment.OrderId,
-                payment.PaymentMethod,
-                payment.OrderAmount,
-                payment.PaymentStatus,
-                payment.ProcessedDate
+                PaymentMethod = (int)payment.PaymentMethod,
+                OrderAmount = payment.OrderAmount,
+                PaymentStatus = (int)payment.PaymentStatus,
+                ProcessedDate = payment.ProcessedDate
             });
 
             return new PaymentResponse
             {
                 Id = payment.Id,
-                PaymentStatus = payment.PaymentStatus.ToString(),
+                PaymentStatus = Convert.ToInt32(payment.PaymentStatus).ToString(),
                 ProcessedDate = payment.ProcessedDate.GetValueOrDefault()
             };
         }

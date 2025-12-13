@@ -10,7 +10,7 @@
 
     public enum PaymentMethod
     {
-        CreditCard,
+        CreditCard = 1,
         DebitCard,
         Pix,
         Boleto,
