@@ -165,20 +165,32 @@ namespace FIAP.CloudGames.Pagamentos.Api.Extensions
 
         private static void ConfigureLogMongo(this WebApplicationBuilder builder)
         {
-            var mongo = builder.Configuration.GetSection("MongoDb").Get<MongoSettings>();
+            try
+            {
 
-            var logConnection = $"{mongo.ConnectionString}/{mongo.Logging.Database}";
 
-            Log.Logger = new LoggerConfiguration()
-                .MinimumLevel.Information()
-                .WriteTo.Console()
-                .WriteTo.MongoDB(
-                    logConnection,
-                    collectionName: mongo.Logging.Collection
-                )
-                .CreateLogger();
+                var mongo = builder.Configuration.GetSection("MongoDb").Get<MongoSettings>();
+                var urlBuilder = new MongoUrlBuilder(mongo.ConnectionString);
 
-            builder.Host.UseSerilog();
+                urlBuilder.DatabaseName = mongo.Logging.Database;
+
+                var logConnection = urlBuilder.ToString();
+
+                Log.Logger = new LoggerConfiguration()
+                    .MinimumLevel.Information()
+                    .WriteTo.Console()
+                    .WriteTo.MongoDB(
+                        logConnection,
+                        collectionName: mongo.Logging.Collection
+                    )
+                    .CreateLogger();
+
+                builder.Host.UseSerilog();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"⚠️ Falha ao inicializar Serilog MongoDB: {ex.Message}");
+            }
         }
 
         private static void ConfigureSwagger(this WebApplicationBuilder builder)
