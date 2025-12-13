@@ -1,11 +1,11 @@
-# Esta fase Ã© usada durante a execuÃ§Ã£o no VS no modo rÃ¡pido (PadrÃ£o para a configuraÃ§Ã£o de DepuraÃ§Ã£o)
+# Esta fase é usada durante a execução no VS no modo rápido (Padrão para a configuração de Depuração)
 FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS base
 USER $APP_UID
 WORKDIR /app
 EXPOSE 8080
 EXPOSE 8081
 
-# Esta fase Ã© usada para compilar o projeto de serviÃ§o
+# Esta fase é usada para compilar o projeto de serviço
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 ARG BUILD_CONFIGURATION=Release
 WORKDIR /src
@@ -17,27 +17,23 @@ COPY ["FIAP.CloudGames.Pagamentos.Domain/FIAP.CloudGames.Pagamentos.Domain.cspro
 COPY ["FIAP.CloudGames.Pagamentos.Infrastructure/FIAP.CloudGames.Pagamentos.Infrastructure.csproj", "FIAP.CloudGames.Pagamentos.Infrastructure/"]
 COPY ["FIAP.CloudGames.Pagamentos.Service/FIAP.CloudGames.Pagamentos.Service.csproj", "FIAP.CloudGames.Pagamentos.Service/"]
 
-# Restaura as dependÃªncias
+# Restaura as dependências
 RUN dotnet restore "FIAP.CloudGames.Pagamentos.sln"
 
-# Copia todo o cÃ³digo fonte
+# Copia todo o código fonte
 COPY . .
 
 # Compila o projeto
 WORKDIR "/src/FIAP.CloudGames.Pagamentos.Api"
 RUN dotnet build "FIAP.CloudGames.Pagamentos.Api.csproj" -c $BUILD_CONFIGURATION -o /app/build
 
-# Esta fase Ã© usada para publicar o projeto de serviÃ§o a ser copiado para a fase final
+# Esta fase é usada para publicar o projeto de serviço a ser copiado para a fase final
 FROM build AS publish
 ARG BUILD_CONFIGURATION=Release
 RUN dotnet publish "FIAP.CloudGames.Pagamentos.Api.csproj" -c $BUILD_CONFIGURATION -o /app/publish /p:UseAppHost=false
 
-# Esta fase Ã© usada na produÃ§Ã£o
+# Esta fase é usada na produção
 FROM base AS final
 WORKDIR /app
 COPY --from=publish /app/publish .
 ENTRYPOINT ["dotnet", "FIAP.CloudGames.Pagamentos.Api.dll"]
-
-
-
-
