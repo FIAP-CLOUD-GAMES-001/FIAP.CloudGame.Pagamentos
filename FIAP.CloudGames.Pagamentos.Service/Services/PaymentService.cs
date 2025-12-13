@@ -1,14 +1,19 @@
-﻿using FIAP.CloudGames.Pagamentos.Domain.Entities;
+﻿using DnsClient.Internal;
+using FIAP.CloudGames.Pagamentos.Domain.Entities;
 using FIAP.CloudGames.Pagamentos.Domain.Enums;
 using FIAP.CloudGames.Pagamentos.Domain.Interfaces.Repositoiries;
 using FIAP.CloudGames.Pagamentos.Domain.Interfaces.Services;
 using FIAP.CloudGames.Pagamentos.Domain.Requests;
 using FIAP.CloudGames.Pagamentos.Domain.Responses;
+using Microsoft.Extensions.Logging;
 using System.Net.Http.Json;
 
 namespace FIAP.CloudGames.Pagamentos.Service.Services;
 
-public class PaymentService(IPaymentRepository repository, IHttpClientFactory clientFactory) : IPaymentService
+public class PaymentService(
+    ILogger<PaymentService> logger,
+    IPaymentRepository repository,
+    IHttpClientFactory clientFactory) : IPaymentService
 {
     public async Task<Payment?> GetPaymentByOrderIdAsync(string orderId)
     {
@@ -31,9 +36,9 @@ public class PaymentService(IPaymentRepository repository, IHttpClientFactory cl
         payment.Approve();
         await repository.CreateAsync(payment);
 
-        var httpClient = clientFactory.CreateClient();
+        var httpClient = clientFactory.CreateClient("NotificationClient");
 
-        await httpClient.PostAsJsonAsync($"/api/webhook/payment", new
+        var httpResponse = await httpClient.PostAsJsonAsync($"/api/webhook/payment", new
         {
             payment.OrderId,
             PaymentMethod = (int)payment.PaymentMethod,
@@ -41,6 +46,11 @@ public class PaymentService(IPaymentRepository repository, IHttpClientFactory cl
             PaymentStatus = (int)payment.PaymentStatus,
             ProcessedDate = payment.ProcessedDate
         });
+
+        if (!httpResponse.IsSuccessStatusCode)
+        {
+            logger.LogError("Failed to send payment notification for OrderId: {OrderId}", payment.OrderId);
+        }
 
         return new PaymentResponse
         {
