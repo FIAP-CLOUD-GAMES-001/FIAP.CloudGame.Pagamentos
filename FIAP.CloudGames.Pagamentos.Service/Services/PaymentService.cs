@@ -40,11 +40,11 @@ public class PaymentService(
 
         var httpResponse = await httpClient.PostAsJsonAsync($"/api/webhook/payment", new
         {
-            payment.OrderId,
-            payment.PaymentId,
-            payment.OrderAmount,
-            PaymentStatus = (int)payment.PaymentStatus,
-            payment.ProcessedDate
+            OrderId = payment.OrderId,
+            PaymentId = payment.PaymentId,
+            Amount = payment.OrderAmount,
+            Status = (int)payment.PaymentStatus,
+            PaymentDate = payment.ProcessedDate
         });
 
         if (!httpResponse.IsSuccessStatusCode)
