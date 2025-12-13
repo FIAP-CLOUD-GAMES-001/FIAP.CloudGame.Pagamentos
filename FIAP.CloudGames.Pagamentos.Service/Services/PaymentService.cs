@@ -1,8 +1,10 @@
 ﻿using FIAP.CloudGames.Pagamentos.Domain.Entities;
+using FIAP.CloudGames.Pagamentos.Domain.Enums;
 using FIAP.CloudGames.Pagamentos.Domain.Interfaces.Repositoiries;
 using FIAP.CloudGames.Pagamentos.Domain.Interfaces.Services;
 using FIAP.CloudGames.Pagamentos.Domain.Requests;
 using FIAP.CloudGames.Pagamentos.Domain.Responses;
+using Microsoft.Extensions.Configuration;
 using System.Net.Http.Json;
 
 namespace FIAP.CloudGames.Pagamentos.Service.Services
@@ -11,41 +13,51 @@ namespace FIAP.CloudGames.Pagamentos.Service.Services
     {
         private readonly IPaymentRepository _repository;
         private readonly HttpClient _httpClient;
+        private readonly string _azureFunctionsBaseUrl;
 
-        public PaymentService(IPaymentRepository repository, IHttpClientFactory clientFactory)
+        public PaymentService(IPaymentRepository repository, IHttpClientFactory clientFactory, IConfiguration configuration)
         {
             _repository = repository;
             _httpClient = clientFactory.CreateClient("NotificationClient");
+
+            _azureFunctionsBaseUrl = configuration["AzureFunctions:BaseUrl"];
+        }
+
+        public async Task<Payment?> GetPaymentByOrderIdAsync(string orderId)
+        {
+            return await _repository.GetByOrderIdAsync(orderId);
+        }
+
+        public async Task<IEnumerable<Payment>> GetPaymentsByDateAsync(DateTime date)
+        {
+            return await _repository.GetPaymentsByDateAsync(date);
         }
 
         public async Task<PaymentResponse> ProcessPaymentAsync(PaymentRequest request)
         {
-            var payment = new Payment
-            {
-                PaymentId = Guid.NewGuid().ToString(),
-                OrderId = request.OrderId,
-                OrderAmount = request.OrderAmount,
-                PaymentMethod = request.PaymentMethod,
-                OrderDate = request.OrderDate,
-                ProcessedDate = DateTime.UtcNow,
-                PaymentStatus = "APPROVED"
-            };
+            var payment = new Payment(
+                request.OrderId,
+                request.OrderAmount,
+                ((PaymentMethod)Convert.ToInt32(request.PaymentMethod)),
+                request.OrderDate);
 
-            await _repository.InsertAsync(payment);
+            await _repository.CreateAsync(payment);
 
-            // Notify Azure Functions
-            await _httpClient.PostAsJsonAsync("/api/payment-notification", new
+            var functionUrl = $"{_azureFunctionsBaseUrl}/api/webhook/payment";
+            await _httpClient.PostAsJsonAsync(functionUrl, new
             {
                 payment.OrderId,
-                payment.PaymentId,
-                payment.PaymentStatus
+                payment.PaymentMethod,
+                payment.OrderAmount,
+                payment.PaymentStatus,
+                payment.ProcessedDate
             });
 
             return new PaymentResponse
             {
-                PaymentId = payment.PaymentId,
-                PaymentStatus = payment.PaymentStatus,
-                ProcessedDate = payment.ProcessedDate
+                Id = payment.Id,
+                PaymentStatus = payment.PaymentStatus.ToString(),
+                ProcessedDate = payment.ProcessedDate.GetValueOrDefault()
             };
         }
     }

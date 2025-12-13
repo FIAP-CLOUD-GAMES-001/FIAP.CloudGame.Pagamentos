@@ -1,7 +1,12 @@
 ﻿using FIAP.CloudGames.Pagamentos.Api.Filters;
 using FIAP.CloudGames.Pagamentos.Api.Logging;
+using FIAP.CloudGames.Pagamentos.Domain.Interfaces.Repositoiries;
+using FIAP.CloudGames.Pagamentos.Domain.Interfaces.Services;
 using FIAP.CloudGames.Pagamentos.Domain.Models;
 using FIAP.CloudGames.Pagamentos.Infrastructure.Data;
+using FIAP.CloudGames.Pagamentos.Infrastructure.Health;
+using FIAP.CloudGames.Pagamentos.Infrastructure.Repositories;
+using FIAP.CloudGames.Pagamentos.Service.Services;
 using FluentValidation;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.DataProtection;
@@ -23,7 +28,7 @@ namespace FIAP.CloudGames.Pagamentos.Api.Extensions
         public static void AddProjectServices(this WebApplicationBuilder builder)
         {
             builder.UseJsonFileConfiguration();
-            builder.ConfigureDbContext();
+            builder.ConfigureMongoDbContext();
             builder.ConfigureJwt();
             builder.ConfigureLogMongo();
             builder.Services.AddControllers();
@@ -38,25 +43,23 @@ namespace FIAP.CloudGames.Pagamentos.Api.Extensions
         private static void ConfigureHealthChecks(this WebApplicationBuilder builder)
         {
             builder.Services.AddHealthChecks()
-                .AddSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")!, name: "sqlserver", timeout: TimeSpan.FromSeconds(5));
+                .AddCheck<MongoHealthCheck>("mongodb");
         }
         private static void ConfigureDependencyInjectionService(this WebApplicationBuilder builder)
         {
-            //builder.Services.AddScoped<IAuthService, AuthService>();
-            //builder.Services.AddScoped<ITokenService, TokenService>();
-            //builder.Services.AddScoped<IUserService, UserService>();
-            //builder.Services.AddScoped<IGameService, GameService>();
-            //builder.Services.AddScoped<IOwnedGameService, OwnedGameService>();
-            //builder.Services.AddScoped<IPromotionService, PromotionService>();
+            //builder.Services.AddScoped<OwnedGameAccessFilter>();
+            builder.Services.AddScoped<IPaymentService, PaymentService>();
 
-            builder.Services.AddScoped<OwnedGameAccessFilter>();
+            builder.Services.AddHttpClient("NotificationClient", client =>
+            {
+                client.BaseAddress = new Uri("https://SEU_ENDPOINT_DA_AZURE_FUNCTION");
+                client.Timeout = TimeSpan.FromSeconds(10);
+            });
+
         }
         private static void ConfigureDependencyInjectionRepository(this WebApplicationBuilder builder)
         {
-            //builder.Services.AddScoped<IUserRepository, UserRepository>();
-            //builder.Services.AddScoped<IGameRepository, GameRepository>();
-            //builder.Services.AddScoped<IOwnedGameRepository, OwnedGameRepository>();
-            //builder.Services.AddScoped<IPromotionRepository, PromotionRepository>();
+            builder.Services.AddScoped<IPaymentRepository, PaymentRepository>();
         }
         private static void ConfigureJwt(this WebApplicationBuilder builder)
         {
@@ -139,43 +142,57 @@ namespace FIAP.CloudGames.Pagamentos.Api.Extensions
             builder.Services.AddAuthorization();
             //builder.Services.AddScoped<TokenService>();
         }
+
+        private static void ConfigureMongoDbContext(this WebApplicationBuilder builder)
+        {
+            // Bind das settings
+            var mongoSettings = new MongoSettings();
+            builder.Configuration.GetSection("MongoDb").Bind(mongoSettings);
+
+            builder.Services.AddSingleton(mongoSettings);
+
+            // Cliente global
+            builder.Services.AddSingleton<IMongoClient>(sp =>
+                new MongoClient(mongoSettings.ConnectionString));
+
+            // Database principal (Pagamentos)
+            builder.Services.AddScoped(sp =>
+            {
+                var client = sp.GetRequiredService<IMongoClient>();
+                return client.GetDatabase(mongoSettings.Database);
+            });
+        }
+
         private static void ConfigureLogMongo(this WebApplicationBuilder builder)
         {
-            var mongoConnection = builder.Configuration.GetConnectionString("MongoDB") ?? string.Empty;
-
-            builder.Services.AddHttpContextAccessor();
-            HttpContextAccessorWrapper.Accessor = builder.Services.BuildServiceProvider()
-                .GetRequiredService<IHttpContextAccessor>();
-
-            Log.Logger = new LoggerConfiguration()
-                .MinimumLevel.Information()
-                .MinimumLevel.Override("Microsoft", LogEventLevel.Warning)
-                .Enrich.FromLogContext()
-                .Enrich.With<UserClaimsEnricher>()
-                .WriteTo.Console()
-                .WriteTo.MongoDB(mongoConnection, collectionName: "logs")
-                .CreateLogger();
-
-            builder.Host.UseSerilog();
-
             try
             {
-                var settings = MongoClientSettings.FromConnectionString(mongoConnection);
-                settings.ConnectTimeout = TimeSpan.FromSeconds(5);
 
-                var client = new MongoClient(settings).ListDatabaseNames();
-                Log.Information("MongoDB connection successful.");
+
+                var mongo = builder.Configuration.GetSection("MongoDb").Get<MongoSettings>();
+                var urlBuilder = new MongoUrlBuilder(mongo.ConnectionString);
+
+                urlBuilder.DatabaseName = mongo.Logging.Database;
+
+                var logConnection = urlBuilder.ToString();
+
+                Log.Logger = new LoggerConfiguration()
+                    .MinimumLevel.Information()
+                    .WriteTo.Console()
+                    .WriteTo.MongoDB(
+                        logConnection,
+                        collectionName: mongo.Logging.Collection
+                    )
+                    .CreateLogger();
+
+                builder.Host.UseSerilog();
             }
             catch (Exception ex)
             {
-                Log.Error($"MongoDB connection failed: {ex.Message}");
+                Console.WriteLine($"⚠️ Falha ao inicializar Serilog MongoDB: {ex.Message}");
             }
         }
-        private static void ConfigureDbContext(this WebApplicationBuilder builder)
-        {
-            builder.Services.AddDbContext<DataContext>(options =>
-                options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
-        }
+
         private static void ConfigureSwagger(this WebApplicationBuilder builder)
         {
             builder.Services.AddSwaggerGen(options =>
@@ -218,11 +235,13 @@ namespace FIAP.CloudGames.Pagamentos.Api.Extensions
                 options.IncludeXmlComments(Path.Combine(AppContext.BaseDirectory, xmlFilename));
             });
         }
+
         private static void ConfigureValidators(this WebApplicationBuilder builder)
         {
             builder.Services.AddValidatorsFromAssemblyContaining<Program>();
 
         }
+
         private static void UseJsonFileConfiguration(this WebApplicationBuilder builder)
         {
             var keysDirectoryPath = Path.Combine(AppContext.BaseDirectory, "dataprotection-keys");

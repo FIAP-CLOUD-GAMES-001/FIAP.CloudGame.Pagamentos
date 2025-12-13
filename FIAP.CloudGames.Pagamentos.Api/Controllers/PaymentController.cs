@@ -35,8 +35,37 @@ namespace FIAP.CloudGames.Pagamentos.Api.Controllers
         [HttpPost]
         public async Task<IActionResult> ProcessPayment([FromBody] PaymentRequest request)
         {
-            var response = await _service.ProcessPaymentAsync(request);
-            return Ok(response);
+            try
+            {
+                var response = await _service.ProcessPaymentAsync(request);
+                return this.ApiOk(response, "Pagamento Recebido com suecsso");
+            }
+            catch (Exception ex)
+            {
+                return this.ApiFail(ex.Message);
+            }
+           
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetPaymentsByDate([FromQuery] DateTime date)
+        {
+            var payments = await _service.GetPaymentsByDateAsync(date);
+            if (!payments.Any())
+                return this.ApiOk(payments, "Nenhum pagamento listado para a data", HttpStatusCode.NoContent);
+
+            return Ok(payments);
+        }
+
+        [HttpGet("{orderId}")]
+        public async Task<IActionResult> GetPaymentByOrderId(string orderId)
+        {
+            var payment = await _service.GetPaymentByOrderIdAsync(orderId);
+
+            if (payment == null)
+                return this.ApiOk(payment, "Pagamento Não Encontrado", HttpStatusCode.NoContent);
+
+            return this.ApiOk(payment,"Pagamento Encontrado");
         }
     }
 }
