@@ -1,19 +1,16 @@
-﻿using DnsClient.Internal;
-using FIAP.CloudGames.Pagamentos.Domain.Entities;
-using FIAP.CloudGames.Pagamentos.Domain.Enums;
+﻿using FIAP.CloudGames.Pagamentos.Domain.Entities;
 using FIAP.CloudGames.Pagamentos.Domain.Interfaces.Repositoiries;
 using FIAP.CloudGames.Pagamentos.Domain.Interfaces.Services;
 using FIAP.CloudGames.Pagamentos.Domain.Requests;
 using FIAP.CloudGames.Pagamentos.Domain.Responses;
 using Microsoft.Extensions.Logging;
-using System.Net.Http.Json;
 
 namespace FIAP.CloudGames.Pagamentos.Service.Services;
 
 public class PaymentService(
     ILogger<PaymentService> logger,
     IPaymentRepository repository,
-    IHttpClientFactory clientFactory) : IPaymentService
+    IRabbitMqService rabbitMqService) : IPaymentService
 {
     public async Task<Payment?> GetPaymentByOrderIdAsync(string orderId)
     {
@@ -30,26 +27,28 @@ public class PaymentService(
         var payment = new Payment(
             request.OrderId,
             request.OrderAmount,
-            ((PaymentMethod)Convert.ToInt32(request.PaymentMethod)),
+            request.PaymentMethod,
             request.OrderDate);
 
         payment.Approve();
         await repository.CreateAsync(payment);
 
-        var httpClient = clientFactory.CreateClient("NotificationClient");
-
-        var httpResponse = await httpClient.PostAsJsonAsync($"/api/webhook/payment", new
+        try
         {
-            OrderId = payment.OrderId,
-            PaymentId = payment.PaymentId,
-            Amount = payment.OrderAmount,
-            Status = (int)payment.PaymentStatus,
-            PaymentDate = payment.ProcessedDate
-        });
+            await rabbitMqService.PublishPaymentNotificationAsync(new
+            {
+                OrderId = payment.OrderId,
+                PaymentId = payment.PaymentId,
+                Amount = payment.OrderAmount,
+                Status = (int)payment.PaymentStatus,
+                PaymentDate = payment.ProcessedDate
+            });
 
-        if (!httpResponse.IsSuccessStatusCode)
+            logger.LogInformation("Payment notification sent to RabbitMQ for OrderId: {OrderId}", payment.OrderId);
+        }
+        catch (Exception ex)
         {
-            logger.LogError("Failed to send payment notification for OrderId: {OrderId}", payment.OrderId);
+            logger.LogError(ex, "Failed to send payment notification to RabbitMQ for OrderId: {OrderId}", payment.OrderId);
         }
 
         return new PaymentResponse

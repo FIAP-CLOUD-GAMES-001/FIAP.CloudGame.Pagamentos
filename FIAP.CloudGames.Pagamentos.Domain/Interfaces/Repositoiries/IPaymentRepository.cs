@@ -9,7 +9,7 @@ namespace FIAP.CloudGames.Pagamentos.Domain.Interfaces.Repositoiries
         Task<Payment> GetByOrderIdAsync(string orderId);
         Task<IEnumerable<Payment>> GetPaymentsByDateAsync(DateTime date);
         Task CreateAsync(Payment payment);
-        Task UpdateStatusAsync(string id, PaymentStatus newStatus);
+        Task UpdateStatusAsync(string id, EPaymentStatus newStatus);
         Task<bool> ExistsAsync(string id);
     }
 }

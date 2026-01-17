@@ -26,6 +26,7 @@ public static class BuilderExtension
     {
         builder.UseJsonFileConfiguration();
         builder.ConfigureMongoDbContext();
+        builder.ConfigureRabbitMq();
         builder.ConfigureJwt();
         builder.ConfigureLogMongo();
         builder.Services.AddControllers();
@@ -46,16 +47,7 @@ public static class BuilderExtension
     private static void ConfigureDependencyInjectionService(this WebApplicationBuilder builder)
     {
         builder.Services.AddScoped<IPaymentService, PaymentService>();
-
-        builder.Services.AddHttpClient("NotificationClient", client =>
-        {
-            var urlBase = builder.Configuration["AzureFunctions:BaseUrl"] ?? string.Empty;
-            var functionKey = builder.Configuration["AzureFunctions:FunctionKey"] ?? string.Empty;
-
-            client.BaseAddress = new Uri(urlBase);
-            client.Timeout = TimeSpan.FromSeconds(10);
-            client.DefaultRequestHeaders.Add("x-functions-key", functionKey);
-        });
+        builder.Services.AddSingleton<IRabbitMqService, RabbitMqService>();
     }
 
     private static void ConfigureDependencyInjectionRepository(this WebApplicationBuilder builder)
@@ -159,6 +151,13 @@ public static class BuilderExtension
             var client = sp.GetRequiredService<IMongoClient>();
             return client.GetDatabase(mongoSettings.Database);
         });
+    }
+
+    private static void ConfigureRabbitMq(this WebApplicationBuilder builder)
+    {
+        var rabbitMqSettings = new RabbitMqSettings();
+        builder.Configuration.GetSection("RabbitMq").Bind(rabbitMqSettings);
+        builder.Services.Configure<RabbitMqSettings>(builder.Configuration.GetSection("RabbitMq"));
     }
 
     private static void ConfigureLogMongo(this WebApplicationBuilder builder)

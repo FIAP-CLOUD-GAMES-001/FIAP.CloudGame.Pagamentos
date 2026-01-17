@@ -39,7 +39,7 @@ public class PaymentRepository : IPaymentRepository
         await _collection.InsertOneAsync(payment);
     }
 
-    public async Task UpdateStatusAsync(string id, PaymentStatus newStatus)
+    public async Task UpdateStatusAsync(string id, EPaymentStatus newStatus)
     {
         var update = Builders<Payment>.Update
             .Set(x => x.PaymentStatus, newStatus)
