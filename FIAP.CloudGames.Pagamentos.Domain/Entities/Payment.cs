@@ -13,16 +13,16 @@ namespace FIAP.CloudGames.Pagamentos.Domain.Entities
         public string PaymentId { get; private set; }      // Gerado internamente
         public string OrderId { get; private set; }        // Vem da API de pedidos
         public decimal OrderAmount { get; private set; }
-        public PaymentMethod PaymentMethod { get; private set; }
+        public EPaymentMethod PaymentMethod { get; private set; }
         public DateTime OrderDate { get; private set; }
 
         public DateTime? ProcessedDate { get; private set; }
-        public PaymentStatus PaymentStatus { get; private set; }
+        public EPaymentStatus PaymentStatus { get; private set; }
 
         public Payment(
             string orderId,
             decimal orderAmount,
-            PaymentMethod paymentMethod,
+            EPaymentMethod paymentMethod,
             DateTime orderDate
         )
         {
@@ -33,18 +33,18 @@ namespace FIAP.CloudGames.Pagamentos.Domain.Entities
             PaymentMethod = paymentMethod;
             OrderDate = orderDate;
 
-            PaymentStatus = PaymentStatus.Pending;
+            PaymentStatus = EPaymentStatus.Pending;
         }
 
         public void Approve()
         {
-            PaymentStatus = PaymentStatus.Approved;
+            PaymentStatus = EPaymentStatus.Approved;
             ProcessedDate = DateTime.UtcNow;
         }
 
         public void Reject()
         {
-            PaymentStatus = PaymentStatus.Rejected;
+            PaymentStatus = EPaymentStatus.Rejected;
             ProcessedDate = DateTime.UtcNow;
         }
     }

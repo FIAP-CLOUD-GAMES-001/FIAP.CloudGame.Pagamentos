@@ -1,10 +1,11 @@
-﻿namespace FIAP.CloudGames.Pagamentos.Domain.Requests
+﻿using FIAP.CloudGames.Pagamentos.Domain.Enums;
+
+namespace FIAP.CloudGames.Pagamentos.Domain.Requests;
+
+public class PaymentRequest
 {
-    public class PaymentRequest
-    {
-        public string OrderId { get; set; }
-        public decimal OrderAmount { get; set; }
-        public string PaymentMethod { get; set; }
-        public DateTime OrderDate { get; set; }
-    }
+    public string OrderId { get; set; } = string.Empty;
+    public decimal OrderAmount { get; set; }
+    public EPaymentMethod PaymentMethod { get; set; } = EPaymentMethod.CreditCard;
+    public DateTime OrderDate { get; set; }
 }
