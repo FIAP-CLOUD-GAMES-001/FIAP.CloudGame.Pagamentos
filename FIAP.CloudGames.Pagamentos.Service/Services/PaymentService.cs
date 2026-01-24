@@ -54,7 +54,7 @@ public class PaymentService(
         return new PaymentResponse
         {
             Id = payment.Id,
-            PaymentStatus = Convert.ToInt32(payment.PaymentStatus).ToString(),
+            PaymentStatus = payment.PaymentStatus,
             ProcessedDate = payment.ProcessedDate.GetValueOrDefault()
         };
     }

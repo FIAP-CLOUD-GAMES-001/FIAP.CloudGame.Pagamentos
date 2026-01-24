@@ -30,7 +30,14 @@ public class RabbitMqService : IRabbitMqService, IDisposable
                 Password = _settings.Password,
                 RequestedConnectionTimeout = TimeSpan.FromSeconds(30),
                 SocketReadTimeout = TimeSpan.FromSeconds(30),
-                SocketWriteTimeout = TimeSpan.FromSeconds(30)
+                SocketWriteTimeout = TimeSpan.FromSeconds(30),
+                VirtualHost = _settings.Username,
+                Ssl = new SslOption
+                {
+                    Enabled = true,
+                    ServerName = _settings.Host,
+                    CertificateValidationCallback = (sender, certificate, chain, sslPolicyErrors) => true
+                }
             };
 
             _logger.LogInformation("Attempting to connect to RabbitMQ at {Host}:{Port} with user {Username}",

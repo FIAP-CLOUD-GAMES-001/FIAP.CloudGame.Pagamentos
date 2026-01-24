@@ -37,7 +37,7 @@ public class PaymentController(IPaymentService service) : ControllerBase
         try
         {
             var response = await service.ProcessPaymentAsync(request);
-            return this.ApiOk(response, "Pagamento Recebido com suecsso");
+            return this.ApiOk(response, "Pagamento Recebido com sucesso");
         }
         catch (Exception ex)
         {

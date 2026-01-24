@@ -1,9 +1,10 @@
-﻿namespace FIAP.CloudGames.Pagamentos.Domain.Responses
+﻿using FIAP.CloudGames.Pagamentos.Domain.Enums;
+
+namespace FIAP.CloudGames.Pagamentos.Domain.Responses;
+
+public class PaymentResponse
 {
-    public class PaymentResponse
-    {
-        public string Id { get; set; }
-        public string PaymentStatus { get; set; }
-        public DateTime ProcessedDate { get; set; }
-    }
+    public string Id { get; set; } = string.Empty;
+    public EPaymentStatus PaymentStatus { get; set; }
+    public DateTime ProcessedDate { get; set; }
 }

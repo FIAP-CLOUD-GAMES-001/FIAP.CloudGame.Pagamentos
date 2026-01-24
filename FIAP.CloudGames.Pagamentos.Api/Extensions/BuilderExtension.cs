@@ -1,5 +1,4 @@
-﻿using FIAP.CloudGames.Pagamentos.Api.Filters;
-using FIAP.CloudGames.Pagamentos.Domain.Interfaces.Repositoiries;
+﻿using FIAP.CloudGames.Pagamentos.Domain.Interfaces.Repositoiries;
 using FIAP.CloudGames.Pagamentos.Domain.Interfaces.Services;
 using FIAP.CloudGames.Pagamentos.Domain.Models;
 using FIAP.CloudGames.Pagamentos.Infrastructure.Data;
@@ -192,7 +191,6 @@ public static class BuilderExtension
     {
         builder.Services.AddSwaggerGen(options =>
         {
-            options.SchemaFilter<EnumSchemaFilter>();
             options.SwaggerDoc("v1", new OpenApiInfo
             {
                 Title = "FiapCloudGamesApi",
