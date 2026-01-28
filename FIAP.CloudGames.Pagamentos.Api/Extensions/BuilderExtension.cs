@@ -35,6 +35,7 @@ public static class BuilderExtension
         builder.ConfigureDependencyInjectionService();
         builder.ConfigureHealthChecks();
         builder.ConfigureValidators();
+        builder.ConfigureApplicationInsights();
     }
 
     private static void ConfigureHealthChecks(this WebApplicationBuilder builder)
@@ -252,5 +253,10 @@ public static class BuilderExtension
             .AddJsonFile($"appsettings.{builder.Environment.EnvironmentName}.json", optional: true, reloadOnChange: true)
             .AddJsonFile("appsettings.Secrets.json", optional: true, reloadOnChange: true)
             .AddEnvironmentVariables();
+    }
+
+    private static void ConfigureApplicationInsights(this WebApplicationBuilder builder)
+    {
+        builder.Services.AddApplicationInsightsTelemetry();
     }
 }
