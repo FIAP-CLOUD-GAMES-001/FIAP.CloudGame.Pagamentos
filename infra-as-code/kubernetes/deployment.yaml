@@ -1,0 +1,36 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: fcg-payments-api
+  labels:
+    app: fcg-payments-api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: fcg-payments-api
+  template:
+    metadata:
+      labels:
+        app: fcg-payments-api
+    spec:
+      imagePullSecrets:
+        - name: fcg-acr-secret
+      containers:
+        - name: fcg-payments-api
+          image: ${DOCKER_REGISTRY}/fcg-payments-api:${DOCKER_IMAGE_TAG}
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8080
+          envFrom:
+            - secretRef:
+                name: fcg-payments-api-secret
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+              ephemeral-storage: "512Mi"
+            limits:
+              cpu: "250m"
+              memory: "256Mi"
+              ephemeral-storage: "1Gi"
