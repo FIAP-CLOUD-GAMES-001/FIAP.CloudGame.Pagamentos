@@ -1,4 +1,4 @@
-# Esta fase é usada para compilar o projeto de serviço
+# Esta fase é usada para compilar  o projeto de serviço
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 USER root
 ARG BUILD_CONFIGURATION=Release
