@@ -2,16 +2,16 @@
 
 ## 📋 Descrição
 
-API .NET 8.0 para processamento de pagamentos que recebe requisições de pagamento, persiste os dados no MongoDB e envia notificações para uma Azure Function.
+API .NET 8.0 responsável pelo processamento de pagamentos. Recebe requisições de pagamento via HTTP da Games API, persiste os dados no MongoDB e publica notificações de status de pagamento para consumo assíncrono.
 
 ## 🎯 Função Principal
 
 A aplicação processa pagamentos através do endpoint `/api/payment` e realiza as seguintes operações:
 
-1. **Recebe** requisições de pagamento (OrderId, valor, método de pagamento, data)
-2. **Cria** e **aprova** o pagamento automaticamente
+1. **Recebe** requisições de pagamento via HTTP (OrderId, valor, método de pagamento, data)
+2. **Processa** e **define** o status do pagamento
 3. **Persiste** os dados no MongoDB
-4. **Envia** notificação para Azure Function via webhook (`/api/webhook/payment`)
+4. **Publica** notificação de status de pagamento para mensageria (RabbitMQ)
 
 ## 🏗️ Arquitetura
 
@@ -19,17 +19,17 @@ Aplicação estruturada em camadas:
 
 - **Domain**: Entidades, interfaces e modelos de domínio
 - **Service**: Lógica de negócio e processamento de pagamentos
-- **Infrastructure**: Repositórios MongoDB e configurações de dados
+- **Infrastructure**: Repositórios MongoDB, mensageria e configurações de dados
 - **Api**: Controllers, middlewares e configurações da API
 
 ## 🛠️ Tecnologias
 
-- .NET 8.0
-- MongoDB
-- JWT Authentication
-- Azure Functions (integração via HTTP)
-- Serilog (logging no MongoDB)
-- Swagger/OpenAPI
+- **.NET 8.0**
+- **MongoDB**
+- **RabbitMQ**
+- **JWT Authentication**
+- **Serilog** (logging no MongoDB)
+- **Swagger/OpenAPI**
 
 ## ⚙️ Configuração
 
@@ -41,9 +41,16 @@ Configure as seguintes propriedades no `appsettings.json`:
     "ConnectionString": "mongodb://localhost:27017",
     "Database": "cloudgames-payments"
   },
-  "AzureFunctions": {
-    "BaseUrl": "http://localhost:7071",
-    "FunctionKey": ""
+    "RabbitMq": {
+    "Host": "localhost",
+    "Port": 5672,
+    "Username": "admin",
+    "Password": "admin",
+    "ExchangeName": "payment-exchange",
+    "QueueName": "payment-success-queue",
+    "RetryQueueName": "payment-retry-queue",
+    "FailQueueName": "payment-fail-queue",
+    "RoutingKey": "payment.notification"
   },
   "Jwt": {
     "Key": "...",
@@ -51,7 +58,7 @@ Configure as seguintes propriedades no `appsettings.json`:
     "Audience": "FIAP.CloudGames"
   }
 }
-```
+````
 
 ## 🚀 Execução
 
@@ -59,10 +66,21 @@ Configure as seguintes propriedades no `appsettings.json`:
 dotnet run --project FIAP.CloudGames.Pagamentos.Api
 ```
 
-A API estará disponível em `https://localhost:5001` (ou porta configurada) e o Swagger em `/swagger`.
+A API estará disponível na porta configurada e o Swagger em `/swagger`.
 
 ## 📡 Endpoints
 
-- `POST /api/payment` - Processa um pagamento e envia notificação para Azure Function
-- `GET /api/payment` - Lista pagamentos
-- `GET /api/payment/{orderId}` - Busca pagamento por OrderId
+* `POST /api/payment`
+  Recebe uma solicitação de pagamento enviada pela Games API, processa e publica o status do pagamento.
+
+* `GET /api/payment`
+  Lista todos os pagamentos.
+
+* `GET /api/payment/{orderId}`
+  Busca pagamento pelo OrderId.
+
+## 📦 Integração com Games API
+
+* A **Games API** envia a solicitação de pagamento via **HTTP**
+* A **Payments API** processa e publica o resultado do pagamento via **mensageria**
+* A **Games API** consome a notificação para atualização do status do pedido
