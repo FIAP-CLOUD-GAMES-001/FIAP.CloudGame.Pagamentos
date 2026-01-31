@@ -1,4 +1,5 @@
 ﻿using FIAP.CloudGames.Pagamentos.Api.Middlewares;
+using Microsoft.OpenApi.Models;
 using Swashbuckle.AspNetCore.SwaggerUI;
 
 namespace FIAP.CloudGames.Pagamentos.Api.Extensions
@@ -14,6 +15,7 @@ namespace FIAP.CloudGames.Pagamentos.Api.Extensions
             app.UseAuthorization();
 
             app.UseMiddleware<ExceptionHandlingMiddleware>();
+            app.UseMiddleware<ForwardedPrefixMiddleware>();
 
             app.MapControllers();
 
@@ -23,11 +25,32 @@ namespace FIAP.CloudGames.Pagamentos.Api.Extensions
 
         private static void UseCustomSwagger(this WebApplication app)
         {
-            app.UseSwagger();
+            var pathBase = app.Configuration["Swagger:PathBase"] ?? string.Empty;
+
+            app.UseSwagger(c =>
+            {
+                if (!string.IsNullOrEmpty(pathBase))
+                {
+                    c.PreSerializeFilters.Add((swagger, httpReq) =>
+                    {
+                        swagger.Servers = new List<OpenApiServer>
+                        {
+                            new OpenApiServer { Url = pathBase }
+                        };
+                    });
+                }
+            });
 
             app.UseSwaggerUI(c =>
             {
-                c.SwaggerEndpoint("/swagger/v1/swagger.json", "CloudGames Payments API v1");
+                var swaggerUrl = string.IsNullOrEmpty(pathBase) 
+                    ? "/swagger/v1/swagger.json" 
+                    : $"{pathBase.TrimEnd('/')}/swagger/v1/swagger.json";
+            
+                c.SwaggerEndpoint(swaggerUrl, "FIAPCloudGames Games API v1");
+                
+                c.RoutePrefix = "swagger";
+                
                 c.SupportedSubmitMethods(new[]
                 {
                     SubmitMethod.Get,

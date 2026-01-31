@@ -199,6 +199,8 @@ public static class BuilderExtension
                 Description = "API Web ASP.NET Core",
             });
 
+            var pathBase = builder.Configuration["Swagger:PathBase"];
+
             options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
             {
                 Description = "JWT Authorization header using the Bearer scheme. Example: \"Authorization: Bearer {token}\"",
@@ -207,6 +209,15 @@ public static class BuilderExtension
                 Type = SecuritySchemeType.Http,
                 Scheme = "bearer"
             });
+
+            if (!string.IsNullOrEmpty(pathBase))
+            {
+                options.AddServer(new OpenApiServer
+                {
+                    Url = pathBase,
+                    Description = "Production Gateway"
+                });
+            }
 
             options.AddSecurityRequirement(new OpenApiSecurityRequirement
             {

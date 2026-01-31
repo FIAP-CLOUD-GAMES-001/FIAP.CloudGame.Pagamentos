@@ -1,12 +1,6 @@
-# Esta fase é usada durante a execução no VS no modo rápido (Padrão para a configuração de Depuração)
-FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS base
-USER $APP_UID
-WORKDIR /app
-EXPOSE 8080
-EXPOSE 8081
-
-# Esta fase é usada para compilar o projeto de serviço
+# Esta fase Ã© usada para compilar o projeto de serviÃ§o
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
+USER root
 ARG BUILD_CONFIGURATION=Release
 WORKDIR /src
 
@@ -17,23 +11,39 @@ COPY ["FIAP.CloudGames.Pagamentos.Domain/FIAP.CloudGames.Pagamentos.Domain.cspro
 COPY ["FIAP.CloudGames.Pagamentos.Infrastructure/FIAP.CloudGames.Pagamentos.Infrastructure.csproj", "FIAP.CloudGames.Pagamentos.Infrastructure/"]
 COPY ["FIAP.CloudGames.Pagamentos.Service/FIAP.CloudGames.Pagamentos.Service.csproj", "FIAP.CloudGames.Pagamentos.Service/"]
 
-# Restaura as dependências
+# Restaura as dependÃªncias
 RUN dotnet restore "FIAP.CloudGames.Pagamentos.sln"
 
-# Copia todo o código fonte
+# Copia todo o cÃ³digo fonte
 COPY . .
 
 # Compila o projeto
 WORKDIR "/src/FIAP.CloudGames.Pagamentos.Api"
 RUN dotnet build "FIAP.CloudGames.Pagamentos.Api.csproj" -c $BUILD_CONFIGURATION -o /app/build
 
-# Esta fase é usada para publicar o projeto de serviço a ser copiado para a fase final
-FROM build AS publish
-ARG BUILD_CONFIGURATION=Release
+# Publica o projeto
 RUN dotnet publish "FIAP.CloudGames.Pagamentos.Api.csproj" -c $BUILD_CONFIGURATION -o /app/publish /p:UseAppHost=false
 
-# Esta fase é usada na produção
-FROM base AS final
+# Esta fase Ã© usada na produÃ§Ã£o
+FROM mcr.microsoft.com/dotnet/aspnet:8.0-alpine AS final
+USER root
+
+# Configurando timezone para America/Sao_Paulo
+RUN apk add --no-cache tzdata icu-libs \
+    && cp /usr/share/zoneinfo/America/Sao_Paulo /etc/localtime \
+    && echo "America/Sao_Paulo" > /etc/timezone \
+    && apk del tzdata
+
+ENV TZ=America/Sao_Paulo
+ENV DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=false
+
 WORKDIR /app
-COPY --from=publish /app/publish .
+COPY --from=build /app/publish .
+
+RUN chown -R $APP_UID /app
+
+EXPOSE 8080
+EXPOSE 8081
+
+USER $APP_UID
 ENTRYPOINT ["dotnet", "FIAP.CloudGames.Pagamentos.Api.dll"]
