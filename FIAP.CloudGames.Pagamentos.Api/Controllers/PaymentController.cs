@@ -30,7 +30,6 @@ public class PaymentController(IPaymentService service) : ControllerBase
     /// <param name="request">The payment request details to be processed. Cannot be null.</param>
     /// <returns>An IActionResult containing the result of the payment processing operation. Returns a success response if the
     /// payment is processed successfully; otherwise, returns a failure response with an error message.</returns>
-    [AllowAnonymous]
     [HttpPost]
     public async Task<IActionResult> ProcessPayment([FromBody] PaymentRequest request)
     {
