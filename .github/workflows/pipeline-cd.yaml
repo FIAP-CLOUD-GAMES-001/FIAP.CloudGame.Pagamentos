@@ -1,0 +1,66 @@
+name: Pipeline CD
+
+on:
+  push:
+    branches:
+      - "main"
+      - "feature/deploy-k8s"
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Set image variables
+        run: |
+          echo "DOCKER_IMAGE_TAG=$(date +'%Y-%m%d')-${{ github.run_number }}" >> $GITHUB_ENV
+          echo "DOCKER_REGISTRY=${{ secrets.ACR_URL }}" >> $GITHUB_ENV
+
+      - name: Restore dependencies
+        run: dotnet restore
+
+      - name: Build
+        run: dotnet build --no-restore --configuration Release
+
+      - name: Run tests
+        run: dotnet test --no-build --configuration Release
+
+      - name: Login Azure Container Registry
+        uses: azure/docker-login@v2
+        with:
+          login-server: ${{ secrets.ACR_URL }}
+          username: ${{ secrets.ACR_USERNAME }}
+          password: ${{ secrets.ACR_PASSWORD }}
+
+      - name: Build Docker image
+        run: docker build -t ${{ env.DOCKER_REGISTRY }}/fcg-payments-api:${{ env.DOCKER_IMAGE_TAG }} -f ./FIAP.CloudGames.Pagamentos.Api/Dockerfile .
+
+      - name: Push Docker image
+        run: docker push ${{ env.DOCKER_REGISTRY }}/fcg-payments-api:${{ env.DOCKER_IMAGE_TAG }}
+
+      - name: Generate Kubernetes manifests
+        run: |
+          mkdir -p kubernetes-resolved
+          for file in infra-as-code/kubernetes/*.yaml; do
+            filename=$(basename "$file")
+            envsubst < "$file" > "kubernetes-resolved/$filename"
+            echo "Generated: kubernetes-resolved/$filename"
+            cat "kubernetes-resolved/$filename"
+          done
+
+      - name: Setup kubeconfig
+        run: |
+          mkdir -p ~/.kube
+          echo "${{ secrets.AKS_KUBECONFIG }}" > ~/.kube/config
+          chmod 600 ~/.kube/config
+
+      - name: Deploy to Kubernetes
+        run: kubectl apply -f kubernetes-resolved/ -n fiap
